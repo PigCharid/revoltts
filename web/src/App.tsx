@@ -374,18 +374,18 @@ function App() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-[1480px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
-        <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+      <main className="relative z-10 mx-auto max-w-[1480px] px-4 py-3 sm:px-6 sm:py-7 lg:px-8">
+        <div className="mb-3 flex flex-col justify-between gap-3 sm:mb-6 lg:flex-row lg:items-end">
           <div>
             <div className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-violet-300/75">
               <Sparkles className="size-3.5" /> Voice Creation Workspace
             </div>
             <h1 className="text-2xl font-semibold tracking-[-0.035em] text-white sm:text-[32px]">创作一段有情绪的声音</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/38">
+            <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-white/38 sm:block">
               提供一段清晰的参考声音，在文字任意位置插入情绪指令，即刻生成自然、细腻的克隆语音。
             </p>
           </div>
-          <div className="flex items-center gap-4 text-[11px] text-white/28">
+          <div className="hidden items-center gap-4 text-[11px] text-white/28 sm:flex">
             <span className="flex items-center gap-1.5"><Clock3 className="size-3.5" />预计 15–30 秒</span>
             <span className="h-3 w-px bg-white/10" />
             <span className="flex items-center gap-1.5"><Gauge className="size-3.5" />高保真 44.1kHz</span>
@@ -394,7 +394,7 @@ function App() {
 
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(320px,0.78fr)_minmax(480px,1.22fr)]">
           <section className="overflow-hidden rounded-[22px] border border-white/[0.075] bg-white/[0.025] shadow-[0_22px_70px_rgba(0,0,0,0.24)]">
-            <div className="flex items-center justify-between border-b border-white/[0.055] px-5 py-4 sm:px-6">
+            <div className="flex items-center justify-between border-b border-white/[0.055] px-4 py-3 sm:px-6 sm:py-4">
               <div className="flex items-center gap-3">
                 <StepBadge number={1} done={referenceReady && referenceText.trim().length > 0} />
                 <div>
@@ -405,12 +405,13 @@ function App() {
               <Headphones className="size-4 text-white/20" />
             </div>
 
-            <div className="space-y-5 p-5 sm:p-6">
+            <div className="space-y-3 p-4 sm:p-5">
+              <div className="overflow-hidden rounded-2xl border border-white/[0.075] bg-black/15">
               {!referenceReady ? (
                 <div
                   className={cn(
-                    "group relative flex min-h-[220px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-white/10 bg-black/15 p-6 text-center transition-all hover:border-violet-400/25 hover:bg-violet-500/[0.025]",
-                    isRecording && "border-rose-400/30 bg-rose-500/[0.035]"
+                    "group relative flex min-h-[148px] flex-col items-center justify-center overflow-hidden p-4 text-center transition-all hover:bg-violet-500/[0.025] sm:min-h-[170px]",
+                    isRecording && "bg-rose-500/[0.035]"
                   )}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => {
@@ -418,12 +419,12 @@ function App() {
                     handleFile(event.dataTransfer.files[0])
                   }}
                 >
-                  <div className="pointer-events-none absolute inset-x-6 top-5 opacity-45 [mask-image:linear-gradient(to_bottom,black,transparent)]">
+                  <div className="pointer-events-none absolute inset-x-6 top-1 opacity-35 [mask-image:linear-gradient(to_bottom,black,transparent)]">
                     <Waveform active={isRecording} compact />
                   </div>
                   <div
                     className={cn(
-                      "relative z-10 mb-4 flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] text-white/65 shadow-xl transition-all group-hover:scale-105 group-hover:text-violet-300",
+                      "relative z-10 mb-2 flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.055] text-white/65 shadow-xl transition-all group-hover:scale-105 group-hover:text-violet-300 sm:size-12",
                       isRecording && "border-rose-400/25 bg-rose-400/10 text-rose-300"
                     )}
                   >
@@ -450,7 +451,7 @@ function App() {
                     <>
                       <p className="text-sm font-medium text-white/85">拖入音频，或直接录制</p>
                       <p className="mt-1.5 text-xs text-white/28">WAV、MP3、M4A、WebM · 至少 10 秒 · 最大 30MB</p>
-                      <div className="mt-5 flex flex-wrap justify-center gap-2.5">
+                      <div className="mt-3 flex flex-wrap justify-center gap-2.5">
                         <Button
                           type="button"
                           variant="outline"
@@ -482,7 +483,7 @@ function App() {
                   />
                 </div>
               ) : (
-                <div className="rounded-2xl border border-white/[0.07] bg-black/20 p-4">
+                <div className="bg-black/20 p-3.5">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -526,12 +527,12 @@ function App() {
               )}
 
               {error && (
-                <div className="flex gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.055] px-3.5 py-3 text-xs leading-5 text-rose-200/80">
+                <div className="mx-3 mb-3 flex gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.055] px-3.5 py-2.5 text-xs leading-5 text-rose-200/80">
                   <Info className="mt-0.5 size-3.5 shrink-0" /> {error}
                 </div>
               )}
 
-              <div>
+              <div className="border-t border-white/[0.055] p-3.5 sm:p-4">
                 <div className="mb-2.5 flex items-center justify-between">
                   <label htmlFor="reference-text" className="text-xs font-medium text-white/68">参考音频原文</label>
                   <button
@@ -549,12 +550,13 @@ function App() {
                   value={referenceText}
                   onChange={(event) => setReferenceText(event.target.value)}
                   placeholder="准确填写参考音频中说出的内容…"
-                  rows={4}
-                  className="w-full resize-none rounded-xl border border-white/[0.075] bg-black/20 px-3.5 py-3 text-sm leading-6 text-white/80 outline-none transition placeholder:text-white/18 focus:border-violet-400/30 focus:ring-2 focus:ring-violet-500/10"
+                  rows={3}
+                  className="w-full resize-none rounded-xl border border-white/[0.075] bg-black/20 px-3.5 py-2.5 text-[13px] leading-5 text-white/80 outline-none transition placeholder:text-white/18 focus:border-violet-400/30 focus:ring-2 focus:ring-violet-500/10 sm:text-sm sm:leading-6"
                 />
                 <div className="mt-2 flex items-start gap-1.5 text-[10px] leading-4 text-white/25">
                   <Info className="mt-0.5 size-3 shrink-0" /> 原文与音频越匹配，声音还原通常越稳定。
                 </div>
+              </div>
               </div>
             </div>
           </section>
