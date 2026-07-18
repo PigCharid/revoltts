@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
       port: 8000,
       strictPort: true,
       allowedHosts: [
+        '.revolai.tech',
         '.featurize.cn',
         '.trycloudflare.com',
         '.loca.lt',

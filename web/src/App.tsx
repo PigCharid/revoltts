@@ -4,7 +4,6 @@ import {
   ChevronDown,
   CircleStop,
   Clock3,
-  Download,
   FileAudio,
   Gauge,
   Headphones,
@@ -128,10 +127,7 @@ function App() {
   const [referencePlaying, setReferencePlaying] = useState(false)
   const [generationState, setGenerationState] = useState<GenerationState>("idle")
   const [resultPlaying, setResultPlaying] = useState(false)
-  const [resultProgress, setResultProgress] = useState(0)
-  const [resultDuration, setResultDuration] = useState(0)
   const [resultUrl, setResultUrl] = useState("")
-  const [resultFilename, setResultFilename] = useState("revoltts-preview.wav")
   const [mode, setMode] = useState<"稳定" | "平衡" | "灵活">("平衡")
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [error, setError] = useState("")
@@ -174,7 +170,6 @@ function App() {
     setReferenceName(name)
     setGenerationState("idle")
     setResultPlaying(false)
-    setResultProgress(0)
     setResultUrl("")
     setError("")
   }
@@ -285,7 +280,6 @@ function App() {
 
   const generate = async () => {
     if (!canGenerate || !referenceAudio || generationState === "generating" || generationState === "queued") return
-    setResultProgress(0)
     setResultPlaying(false)
     setError("")
     if (resultUrl) URL.revokeObjectURL(resultUrl)
@@ -302,7 +296,6 @@ function App() {
         setGenerationState
       )
       setResultUrl(URL.createObjectURL(result.audioBlob))
-      setResultFilename(result.filename)
       setGenerationState("completed")
     } catch (generationError) {
       setGenerationState("idle")
@@ -322,21 +315,6 @@ function App() {
     if (!audio) return
     if (audio.paused) void audio.play()
     else audio.pause()
-  }
-
-  const resetResult = () => {
-    setGenerationState("idle")
-    setResultPlaying(false)
-    setResultProgress(0)
-    if (resultAudioRef.current) resultAudioRef.current.currentTime = 0
-  }
-
-  const downloadResult = () => {
-    if (!resultUrl) return
-    const link = document.createElement("a")
-    link.href = resultUrl
-    link.download = resultFilename
-    link.click()
   }
 
   const visibleTags = tags.filter((tag) => tag.group === activeGroup)
@@ -570,13 +548,35 @@ function App() {
                   <p className="mt-0.5 text-[11px] text-white/30">在光标位置插入任意表达指令</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setScript(exampleScript)}
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] text-white/35 transition hover:bg-white/[0.05] hover:text-white/70"
-              >
-                <RotateCcw className="size-3.5" /> 示例脚本
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setScript(exampleScript)}
+                  className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] text-white/35 transition hover:bg-white/[0.05] hover:text-white/70 sm:flex"
+                >
+                  <RotateCcw className="size-3.5" /> 示例脚本
+                </button>
+                <Button
+                  type="button"
+                  disabled={generationState !== "completed" && (!canGenerate || generationState !== "idle")}
+                  onClick={generationState === "completed" ? toggleResult : generate}
+                  className="h-9 rounded-lg bg-violet-500 px-3.5 text-xs text-white shadow-[0_8px_24px_rgba(124,92,255,0.22)] hover:bg-violet-400 disabled:bg-white/[0.06] disabled:text-white/25 disabled:shadow-none sm:px-4"
+                >
+                  {generationState === "idle" && <><Sparkles className="size-3.5" />生成语音</>}
+                  {(generationState === "queued" || generationState === "generating") && <><AudioLines className="generation-pulse size-3.5" />生成中…</>}
+                  {generationState === "completed" && (resultPlaying
+                    ? <><Pause className="size-3.5 fill-current" />暂停</>
+                    : <><Play className="size-3.5 fill-current" />试听</>)}
+                </Button>
+                <audio
+                  ref={resultAudioRef}
+                  src={resultUrl}
+                  onPlay={() => setResultPlaying(true)}
+                  onPause={() => setResultPlaying(false)}
+                  onEnded={() => setResultPlaying(false)}
+                  className="hidden"
+                />
+              </div>
             </div>
 
             <div className="p-5 sm:p-6">
@@ -700,109 +700,6 @@ function App() {
             </div>
           </section>
         </div>
-
-        <section className="mt-4 overflow-hidden rounded-[22px] border border-white/[0.075] bg-white/[0.025] shadow-[0_22px_70px_rgba(0,0,0,0.24)]">
-          <div className="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-3">
-              <StepBadge number={3} done={generationState === "completed"} />
-              <div>
-                <h2 className="text-sm font-medium text-white/90">生成与试听</h2>
-                <p className="mt-0.5 text-[11px] text-white/30">
-                  {generationState === "idle" && "准备就绪后，生成属于你的情绪语音"}
-                  {generationState === "queued" && "任务已进入队列，正在分配推理资源"}
-                  {generationState === "generating" && "正在理解脚本情绪并重建声音"}
-                  {generationState === "completed" && "预览已生成，可试听或下载"}
-                </p>
-              </div>
-            </div>
-
-            {generationState === "idle" && (
-              <Button
-                type="button"
-                disabled={!canGenerate}
-                onClick={generate}
-                className="h-11 w-full rounded-xl bg-violet-500 px-6 text-white shadow-[0_12px_36px_rgba(124,92,255,0.25)] hover:bg-violet-400 disabled:bg-white/[0.06] disabled:text-white/20 disabled:shadow-none lg:w-auto"
-              >
-                <Sparkles className="size-4" /> 生成情绪语音
-              </Button>
-            )}
-
-            {(generationState === "queued" || generationState === "generating") && (
-              <div className="flex w-full items-center gap-3 rounded-xl border border-violet-400/12 bg-violet-500/[0.045] px-4 py-3 lg:w-[430px]">
-                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-violet-500/12 text-violet-300">
-                  <AudioLines className="generation-pulse size-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="mb-2 flex items-center justify-between text-[10px]">
-                    <span className="text-white/55">{generationState === "queued" ? "正在排队" : "正在生成"}</span>
-                    <span className="text-white/25">RevolTTS 推理服务</span>
-                  </div>
-                  <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
-                    <div className="generation-progress h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {generationState === "completed" && (
-              <div className="flex w-full flex-col gap-3 lg:w-[620px] lg:flex-row lg:items-center">
-                <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={toggleResult}
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
-                  >
-                    {resultPlaying ? <Pause className="size-4 fill-current" /> : <Play className="ml-0.5 size-4 fill-current" />}
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <div className="relative">
-                      <Waveform active={resultPlaying} compact />
-                      <div
-                        className="pointer-events-none absolute inset-y-0 left-0 overflow-hidden"
-                        style={{ width: `${resultProgress}%` }}
-                      >
-                        <div className="h-full w-[420px] max-w-[60vw] bg-gradient-to-r from-violet-400/20 to-cyan-300/10" />
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-[9px] text-white/22">
-                      <span>{formatTime((resultProgress / 100) * resultDuration)}</span>
-                      <span>{formatTime(resultDuration)}</span>
-                    </div>
-                  </div>
-                  <audio
-                    ref={resultAudioRef}
-                    src={resultUrl}
-                    onLoadedMetadata={(event) => setResultDuration(event.currentTarget.duration)}
-                    onTimeUpdate={(event) =>
-                      setResultProgress((event.currentTarget.currentTime / event.currentTarget.duration) * 100 || 0)
-                    }
-                    onPlay={() => setResultPlaying(true)}
-                    onPause={() => setResultPlaying(false)}
-                    onEnded={() => setResultPlaying(false)}
-                    className="hidden"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={resetResult}
-                    className="flex-1 border-white/[0.08] bg-white/[0.035] text-white/55 hover:bg-white/[0.07] hover:text-white lg:flex-none"
-                  >
-                    <RotateCcw className="size-4" /> 重做
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={downloadResult}
-                    className="flex-1 bg-white text-black hover:bg-white/85 lg:flex-none"
-                  >
-                    <Download className="size-4" /> 下载
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
 
         <footer className="flex flex-col items-center justify-between gap-2 px-1 pb-4 pt-6 text-[10px] text-white/18 sm:flex-row">
           <p>RevolTTS Voice Studio · Powered by Fish Audio S2-Pro</p>
