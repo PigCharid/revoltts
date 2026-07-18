@@ -8,7 +8,6 @@ RevolTTS 是一个基于 [Fish Audio S2-Pro](https://huggingface.co/fishaudio/s2
 - Fish Audio S2-Pro `[tag]` 行内情绪控制
 - 自由自然语言情绪标签
 - FastAPI HTTP 接口
-- 浏览器上传、录音、试听和下载页面
 - WAV、PCM、MP3、Opus 输出选项
 
 > 模型权重没有提交到 Git。首次运行前必须单独下载 S2-Pro 权重。
@@ -18,16 +17,15 @@ RevolTTS 是一个基于 [Fish Audio S2-Pro](https://huggingface.co/fishaudio/s2
 ```text
 revoltts/
 ├─ main.py                    # FastAPI 服务入口
-├─ index.html                 # 当前服务使用的浏览器体验页面
 ├─ fish_speech/               # Fish Speech 推理及训练源码
 ├─ checkpoints/s2-pro/        # S2-Pro 权重，需单独下载
-├─ web/                       # React/Vite 产品前端，正在开发
+├─ web/                       # React/Vite 产品前端
 ├─ pyproject.toml             # Python 项目和依赖配置
 ├─ uv.lock                    # Python 依赖锁文件
 └─ FISH_SPEECH_LICENSE        # Fish Speech 许可证
 ```
 
-当前运行 `main.py` 时，根路径 `/` 返回的是根目录的 `index.html`。`web/` 是后续产品前端，目前不参与 Python 服务启动。
+Python 服务只提供 TTS API，不再托管页面。产品界面位于 `web/`，前后端分别启动和部署。
 
 ## 运行环境
 
@@ -127,12 +125,6 @@ uv run python main.py
 http://0.0.0.0:8080
 ```
 
-本机浏览器访问：
-
-```text
-http://127.0.0.1:8080/
-```
-
 首次启动需要加载并预热模型，时间取决于磁盘、CPU 和 GPU 性能。看到下面的日志后才表示服务已经可以使用：
 
 ```text
@@ -152,23 +144,6 @@ curl http://127.0.0.1:8080/health
 ```json
 {"status":"ok"}
 ```
-
-### 浏览器体验页面
-
-打开：
-
-```text
-http://127.0.0.1:8080/
-```
-
-页面支持：
-
-- 上传参考音频
-- 使用浏览器麦克风录音
-- 填写参考音频对应原文
-- 输入目标文本
-- 调整生成参数
-- 在线播放和下载生成结果
 
 ## API 使用
 
@@ -324,7 +299,7 @@ uv run uvicorn main:app --host 0.0.0.0 --port 8080 --workers 1
 
 ## `web/` 前端开发
 
-`web/` 是 React + TypeScript + Vite 项目，用于后续开发正式产品页面。
+`web/` 是 React + TypeScript + Vite 产品前端。
 
 安装依赖：
 
@@ -339,13 +314,15 @@ npm install
 npm run dev
 ```
 
+默认访问地址：`http://127.0.0.1:8000/`。如果 8000 端口已被占用，Vite 会直接提示错误，避免自动切换到其他端口。
+
 构建：
 
 ```bash
 npm run build
 ```
 
-目前 Python 服务不会自动返回 `web/dist`。在完成正式前端及 API 接入前，请使用 `http://127.0.0.1:8080/` 访问根目录的现有体验页面。
+Python 服务不会自动返回 `web/dist`。开发时分别启动 FastAPI 和 Vite；部署时可由 Nginx/Caddy 托管 `web/dist`，并将 API 请求转发到 FastAPI。
 
 ## 常见问题
 

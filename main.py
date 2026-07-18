@@ -10,7 +10,7 @@ import soundfile as sf
 import torch
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
@@ -198,21 +198,12 @@ async def lifespan(app: FastAPI):
     port = int(os.getenv("REVOLTTS_PORT", "8080"))
     display_host = "127.0.0.1" if host == "0.0.0.0" else host
     logger.success("revoltts started successfully")
-    logger.info("Web UI: http://{}:{}/", display_host, port)
     logger.info("Health: http://{}:{}/health", display_host, port)
     logger.info("TTS form API: http://{}:{}/ttsform", display_host, port)
     yield
 
 
 app = FastAPI(title="revoltts", version="0.1.0", lifespan=lifespan)
-
-
-@app.get("/")
-def web_ui():
-    index_path = BASE_DIR / "index.html"
-    if not index_path.exists():
-        raise HTTPException(status_code=404, detail="index.html not found")
-    return FileResponse(index_path)
 
 
 @app.get("/health")
