@@ -117,6 +117,7 @@ function StepBadge({ number, done }: { number: number; done?: boolean }) {
 
 function App() {
   const [referenceName, setReferenceName] = useState("")
+  const [referenceAudio, setReferenceAudio] = useState<Blob | null>(null)
   const [referenceUrl, setReferenceUrl] = useState("")
   const [referenceText, setReferenceText] = useState(referenceTextExample)
   const [script, setScript] = useState(exampleScript)
@@ -129,6 +130,8 @@ function App() {
   const [resultPlaying, setResultPlaying] = useState(false)
   const [resultProgress, setResultProgress] = useState(0)
   const [resultDuration, setResultDuration] = useState(0)
+  const [resultUrl, setResultUrl] = useState("")
+  const [resultFilename, setResultFilename] = useState("revoltts-preview.wav")
   const [mode, setMode] = useState<"稳定" | "平衡" | "灵活">("平衡")
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [error, setError] = useState("")
@@ -141,9 +144,8 @@ function App() {
   const referenceAudioRef = useRef<HTMLAudioElement>(null)
   const resultAudioRef = useRef<HTMLAudioElement>(null)
 
-  const referenceReady = Boolean(referenceUrl)
+  const referenceReady = Boolean(referenceAudio && referenceUrl)
   const canGenerate = referenceReady && referenceText.trim().length > 0 && script.trim().length > 0
-  const resultUrl = referenceUrl
 
   useEffect(() => {
     if (!isRecording) return
@@ -158,13 +160,22 @@ function App() {
     }
   }, [referenceUrl])
 
+  useEffect(() => {
+    return () => {
+      if (resultUrl) URL.revokeObjectURL(resultUrl)
+    }
+  }, [resultUrl])
+
   const setAudioSource = (blob: Blob, name: string) => {
     if (referenceUrl) URL.revokeObjectURL(referenceUrl)
+    if (resultUrl) URL.revokeObjectURL(resultUrl)
+    setReferenceAudio(blob)
     setReferenceUrl(URL.createObjectURL(blob))
     setReferenceName(name)
     setGenerationState("idle")
     setResultPlaying(false)
     setResultProgress(0)
+    setResultUrl("")
     setError("")
   }
 
@@ -241,9 +252,12 @@ function App() {
   const clearReference = () => {
     if (referenceUrl) URL.revokeObjectURL(referenceUrl)
     setReferenceUrl("")
+    setReferenceAudio(null)
     setReferenceName("")
     setReferencePlaying(false)
     setGenerationState("idle")
+    if (resultUrl) URL.revokeObjectURL(resultUrl)
+    setResultUrl("")
   }
 
   const insertTag = (value: string) => {
@@ -270,14 +284,30 @@ function App() {
   }
 
   const generate = async () => {
-    if (!canGenerate || generationState === "generating" || generationState === "queued") return
+    if (!canGenerate || !referenceAudio || generationState === "generating" || generationState === "queued") return
     setResultProgress(0)
     setResultPlaying(false)
-    await generateSpeech(
-      { referenceAudioUrl: referenceUrl, referenceText, script: serializeScriptForApi(script), mode },
-      setGenerationState
-    )
-    setGenerationState("completed")
+    setError("")
+    if (resultUrl) URL.revokeObjectURL(resultUrl)
+    setResultUrl("")
+    try {
+      const result = await generateSpeech(
+        {
+          referenceAudio,
+          referenceAudioName: referenceName || "reference-audio.webm",
+          referenceText,
+          script: serializeScriptForApi(script),
+          mode,
+        },
+        setGenerationState
+      )
+      setResultUrl(URL.createObjectURL(result.audioBlob))
+      setResultFilename(result.filename)
+      setGenerationState("completed")
+    } catch (generationError) {
+      setGenerationState("idle")
+      setError(generationError instanceof Error ? generationError.message : "语音生成失败，请稍后重试。")
+    }
   }
 
   const toggleReference = () => {
@@ -305,7 +335,7 @@ function App() {
     if (!resultUrl) return
     const link = document.createElement("a")
     link.href = resultUrl
-    link.download = "revoltts-preview.webm"
+    link.download = resultFilename
     link.click()
   }
 
@@ -703,7 +733,7 @@ function App() {
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex items-center justify-between text-[10px]">
                     <span className="text-white/55">{generationState === "queued" ? "正在排队" : "正在生成"}</span>
-                    <span className="text-white/25">模拟接口</span>
+                    <span className="text-white/25">RevolTTS 推理服务</span>
                   </div>
                   <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
                     <div className="generation-progress h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" />
@@ -774,7 +804,7 @@ function App() {
 
         <footer className="flex flex-col items-center justify-between gap-2 px-1 pb-4 pt-6 text-[10px] text-white/18 sm:flex-row">
           <p>RevolTTS Voice Studio · Powered by Fish Audio S2-Pro</p>
-          <p>当前为交互原型，生成流程使用模拟接口</p>
+          <p>生成请求由本地 RevolTTS 推理服务处理</p>
         </footer>
       </main>
     </div>

@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 8000,
       strictPort: true,
-      allowedHosts: ['.featurize.cn'],
+      allowedHosts: ['.featurize.cn', '.trycloudflare.com'],
       proxy: {
         '/api': {
           target: apiTarget,
