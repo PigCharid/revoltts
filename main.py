@@ -10,6 +10,7 @@ import soundfile as sf
 import torch
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -204,6 +205,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="revoltts", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
+)
 
 
 @app.get("/health")
