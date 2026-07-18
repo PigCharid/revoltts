@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => {
         '.trycloudflare.com',
         '.loca.lt',
         '.localtunnel.me',
+        '.localhost.run',
+        '.lhr.life',
       ],
       proxy: {
         '/api': {

@@ -213,7 +213,7 @@ http://服务器IP:8000
 
 Vite 开发服务器已允许通过 Featurize 的 `*.featurize.cn` 工作区域名访问。
 
-需要让外部用户通过 HTTPS 试用录音功能时，可以使用 Cloudflare Tunnel 或 LocalTunnel 将本机 `8000` 端口映射为临时 HTTPS 地址；Vite 已允许 `*.trycloudflare.com`、`*.loca.lt` 和 `*.localtunnel.me` 访问。
+需要让外部用户通过 HTTPS 试用录音功能时，可以使用 Cloudflare Tunnel、LocalTunnel 或 localhost.run 将本机 `8000` 端口映射为临时 HTTPS 地址；Vite 已允许相应的临时域名访问。
 
 开发环境中，Vite 会把所有 `/api/*` 请求代理到同一台机器的 `http://127.0.0.1:8080`，并自动移除 `/api` 前缀。例如：
 
