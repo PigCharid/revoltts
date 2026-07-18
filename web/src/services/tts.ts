@@ -19,6 +19,10 @@ const modeParameters = {
   灵活: { topP: "0.9", temperature: "0.9" },
 } as const
 
+const ttsApiBaseUrl = (
+  import.meta.env.VITE_TTS_API_BASE_URL || "http://workspace.featurize.cn:18438"
+).replace(/\/+$/, "")
+
 function getResponseFilename(response: Response) {
   const disposition = response.headers.get("content-disposition") ?? ""
   const match = disposition.match(/filename="?([^";]+)"?/i)
@@ -58,12 +62,12 @@ export async function generateSpeech(
 
   let response: Response
   try {
-    response = await fetch("/api/ttsform", {
+    response = await fetch(`${ttsApiBaseUrl}/ttsform`, {
       method: "POST",
       body: formData,
     })
   } catch {
-    throw new Error("无法连接语音服务，请确认后端已在 8080 端口启动。")
+    throw new Error("无法连接语音服务，请确认 TTS 接口地址可访问且已允许跨域请求。")
   }
 
   if (!response.ok) {
