@@ -209,7 +209,7 @@ app = FastAPI(title="revoltts", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
 )
