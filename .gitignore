@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.DS_Store
+
+# Downloaded Fish Audio model weights and tokenizer files
+checkpoints/
+
+# Frontend dependencies and build output
+web/node_modules/
+web/dist/
+web/dist-ssr/
+
+# Local runtime output
+storage/
+uploads/
+outputs/
+*.wav
+*.mp3
+*.opus
+*.pcm
