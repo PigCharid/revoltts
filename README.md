@@ -27,6 +27,8 @@ revoltts/
 
 Python 服务只提供 TTS API，不再托管页面。产品界面位于 `web/`，前后端分别启动和部署。
 
+Fish Speech 请求参数、实际生效情况及产品开放建议见 [`FISH_SPEECH_PARAMETERS.md`](FISH_SPEECH_PARAMETERS.md)。
+
 ## 运行环境
 
 推荐配置：
