@@ -4,6 +4,8 @@ import {
   ChevronDown,
   CircleStop,
   Clock3,
+  Dices,
+  Download,
   FileAudio,
   Gauge,
   Headphones,
@@ -34,6 +36,15 @@ type VoiceTag = {
   tone: string
 }
 
+type GeneratedAudioRecord = {
+  id: string
+  url: string
+  filename: string
+  text: string
+  createdAt: string
+  seed: number
+}
+
 const tags: VoiceTag[] = [
   { label: "开心", value: "happy", group: "情绪", tone: "bg-amber-500/12 text-amber-300 border-amber-400/20" },
   { label: "兴奋", value: "excited", group: "情绪", tone: "bg-orange-500/12 text-orange-300 border-orange-400/20" },
@@ -56,7 +67,7 @@ const tags: VoiceTag[] = [
 ]
 
 const exampleScript =
-  "今天本来是很普通的一天。[短暂停顿]直到我打开那扇门，[惊讶]天啊！[耳语]里面竟然站着一个和我一模一样的人。"
+  "[professional livestream host][energetic and confident]直播间的家人们注意了！现在正在讲解的是今天的主推款！"
 
 const referenceTextExample =
   "这个系统能够将文字转换为自然流畅的语音。它会分析每个词语的上下文，并生成合适的语调。目标是让数字化的声音尽可能接近人类的对话。"
@@ -114,6 +125,62 @@ function StepBadge({ number, done }: { number: number; done?: boolean }) {
   )
 }
 
+function GeneratedRecordCard({ record, index }: { record: GeneratedAudioRecord; index: number }) {
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const [playing, setPlaying] = useState(false)
+
+  const togglePlaying = () => {
+    const audio = audioRef.current
+    if (!audio) return
+    if (audio.paused) void audio.play()
+    else audio.pause()
+  }
+
+  const download = () => {
+    const link = document.createElement("a")
+    link.href = record.url
+    link.download = record.filename
+    link.click()
+  }
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.065] bg-black/20 p-2.5 sm:gap-3 sm:px-4 sm:py-3">
+      <button
+        type="button"
+        onClick={togglePlaying}
+        className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-black transition active:scale-95 sm:size-10 sm:hover:scale-105"
+        aria-label={playing ? "暂停" : "播放"}
+      >
+        {playing ? <Pause className="size-4 fill-current" /> : <Play className="ml-0.5 size-4 fill-current" />}
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-white/75">生成记录 {index + 1}</span>
+          <span className="text-[10px] text-white/25">{record.createdAt} · Seed {record.seed}</span>
+        </div>
+        <p className="mt-1 truncate text-[11px] text-white/35" title={record.text}>{record.text}</p>
+      </div>
+      <button
+        type="button"
+        onClick={download}
+        className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-white/[0.07] bg-white/[0.035] text-white/45 transition active:scale-95 hover:bg-white/[0.08] hover:text-white sm:size-9"
+        aria-label="下载音频"
+        title="下载音频"
+      >
+        <Download className="size-4" />
+      </button>
+      <audio
+        ref={audioRef}
+        src={record.url}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        className="hidden"
+      />
+    </div>
+  )
+}
+
 function App() {
   const [referenceName, setReferenceName] = useState("")
   const [referenceAudio, setReferenceAudio] = useState<Blob | null>(null)
@@ -126,9 +193,9 @@ function App() {
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const [referencePlaying, setReferencePlaying] = useState(false)
   const [generationState, setGenerationState] = useState<GenerationState>("idle")
-  const [resultPlaying, setResultPlaying] = useState(false)
-  const [resultUrl, setResultUrl] = useState("")
+  const [generatedRecords, setGeneratedRecords] = useState<GeneratedAudioRecord[]>([])
   const [mode, setMode] = useState<"稳定" | "平衡" | "灵活">("平衡")
+  const [seed, setSeed] = useState(42)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [error, setError] = useState("")
 
@@ -138,7 +205,7 @@ function App() {
   const recordingChunksRef = useRef<Blob[]>([])
   const recordingStreamRef = useRef<MediaStream | null>(null)
   const referenceAudioRef = useRef<HTMLAudioElement>(null)
-  const resultAudioRef = useRef<HTMLAudioElement>(null)
+  const generatedUrlsRef = useRef<string[]>([])
 
   const referenceReady = Boolean(referenceAudio && referenceUrl)
   const canGenerate = referenceReady && referenceText.trim().length > 0 && script.trim().length > 0
@@ -156,21 +223,14 @@ function App() {
     }
   }, [referenceUrl])
 
-  useEffect(() => {
-    return () => {
-      if (resultUrl) URL.revokeObjectURL(resultUrl)
-    }
-  }, [resultUrl])
+  useEffect(() => () => generatedUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)), [])
 
   const setAudioSource = (blob: Blob, name: string) => {
     if (referenceUrl) URL.revokeObjectURL(referenceUrl)
-    if (resultUrl) URL.revokeObjectURL(resultUrl)
     setReferenceAudio(blob)
     setReferenceUrl(URL.createObjectURL(blob))
     setReferenceName(name)
     setGenerationState("idle")
-    setResultPlaying(false)
-    setResultUrl("")
     setError("")
   }
 
@@ -251,8 +311,6 @@ function App() {
     setReferenceName("")
     setReferencePlaying(false)
     setGenerationState("idle")
-    if (resultUrl) URL.revokeObjectURL(resultUrl)
-    setResultUrl("")
   }
 
   const insertTag = (value: string) => {
@@ -280,10 +338,7 @@ function App() {
 
   const generate = async () => {
     if (!canGenerate || !referenceAudio || generationState === "generating" || generationState === "queued") return
-    setResultPlaying(false)
     setError("")
-    if (resultUrl) URL.revokeObjectURL(resultUrl)
-    setResultUrl("")
     try {
       const result = await generateSpeech(
         {
@@ -292,11 +347,24 @@ function App() {
           referenceText,
           script: serializeScriptForApi(script),
           mode,
+          seed,
         },
         setGenerationState
       )
-      setResultUrl(URL.createObjectURL(result.audioBlob))
-      setGenerationState("completed")
+      const url = URL.createObjectURL(result.audioBlob)
+      generatedUrlsRef.current.push(url)
+      setGeneratedRecords((records) => [
+        {
+          id: crypto.randomUUID(),
+          url,
+          filename: result.filename,
+          text: script,
+          createdAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+          seed,
+        },
+        ...records,
+      ])
+      setGenerationState("idle")
     } catch (generationError) {
       setGenerationState("idle")
       setError(generationError instanceof Error ? generationError.message : "语音生成失败，请稍后重试。")
@@ -310,13 +378,6 @@ function App() {
     else audio.pause()
   }
 
-  const toggleResult = () => {
-    const audio = resultAudioRef.current
-    if (!audio) return
-    if (audio.paused) void audio.play()
-    else audio.pause()
-  }
-
   const visibleTags = tags.filter((tag) => tag.group === activeGroup)
 
   return (
@@ -324,7 +385,7 @@ function App() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(124,92,255,0.11),transparent_30%),radial-gradient(circle_at_90%_30%,rgba(67,188,255,0.07),transparent_32%)]" />
 
       <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#08090d]/80 backdrop-blur-2xl">
-        <div className="mx-auto flex h-16 max-w-[1480px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-14 max-w-[1480px] items-center justify-between px-3 sm:h-16 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <div className="relative flex size-9 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/12 text-violet-300 shadow-[0_0_28px_rgba(124,92,255,0.15)]">
               <AudioLines className="size-[18px]" />
@@ -345,20 +406,20 @@ function App() {
               <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
               RevolTTS 在线
             </div>
-            <Button variant="ghost" size="sm" className="text-white/45 hover:bg-white/[0.05] hover:text-white">
+            <Button variant="ghost" size="sm" className="hidden text-white/45 hover:bg-white/[0.05] hover:text-white sm:inline-flex">
               使用指南
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-[1480px] px-4 py-3 sm:px-6 sm:py-7 lg:px-8">
+      <main className="relative z-10 mx-auto max-w-[1480px] px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:px-6 sm:py-7 lg:px-8">
         <div className="mb-3 flex flex-col justify-between gap-3 sm:mb-6 lg:flex-row lg:items-end">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-violet-300/75">
+            <div className="mb-1.5 hidden items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-violet-300/75 sm:flex">
               <Sparkles className="size-3.5" /> Voice Creation Workspace
             </div>
-            <h1 className="text-2xl font-semibold tracking-[-0.035em] text-white sm:text-[32px]">创作一段有情绪的声音</h1>
+            <h1 className="text-[22px] font-semibold tracking-[-0.035em] text-white sm:text-[32px]">创作一段有情绪的声音</h1>
             <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-white/38 sm:block">
               提供一段清晰的参考声音，在文字任意位置插入情绪指令，即刻生成自然、细腻的克隆语音。
             </p>
@@ -371,7 +432,8 @@ function App() {
         </div>
 
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(320px,0.78fr)_minmax(480px,1.22fr)]">
-          <section className="overflow-hidden rounded-[22px] border border-white/[0.075] bg-white/[0.025] shadow-[0_22px_70px_rgba(0,0,0,0.24)]">
+          <div className="grid gap-3 sm:gap-4">
+          <section className="overflow-hidden rounded-[18px] border border-white/[0.075] bg-white/[0.025] shadow-[0_22px_70px_rgba(0,0,0,0.24)] sm:rounded-[22px]">
             <div className="flex items-center justify-between border-b border-white/[0.055] px-4 py-3 sm:px-6 sm:py-4">
               <div className="flex items-center gap-3">
                 <StepBadge number={1} done={referenceReady && referenceText.trim().length > 0} />
@@ -434,14 +496,14 @@ function App() {
                           type="button"
                           variant="outline"
                           onClick={() => fileInputRef.current?.click()}
-                          className="border-white/10 bg-white/[0.045] text-white/75 hover:bg-white/[0.08] hover:text-white"
+                        className="h-11 border-white/10 bg-white/[0.045] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
                         >
                           <Upload className="size-4" /> 上传声音
                         </Button>
                         <Button
                           type="button"
                           onClick={startRecording}
-                          className="bg-violet-500 text-white shadow-[0_8px_30px_rgba(124,92,255,0.24)] hover:bg-violet-400"
+                          className="h-11 bg-violet-500 px-4 text-white shadow-[0_8px_30px_rgba(124,92,255,0.24)] hover:bg-violet-400"
                         >
                           <Mic className="size-4" /> 开始录音
                         </Button>
@@ -529,7 +591,7 @@ function App() {
                   onChange={(event) => setReferenceText(event.target.value)}
                   placeholder="准确填写参考音频中说出的内容…"
                   rows={3}
-                  className="w-full resize-none rounded-xl border border-white/[0.075] bg-black/20 px-3.5 py-2.5 text-[13px] leading-5 text-white/80 outline-none transition placeholder:text-white/18 focus:border-violet-400/30 focus:ring-2 focus:ring-violet-500/10 sm:text-sm sm:leading-6"
+                  className="w-full resize-none rounded-xl border border-white/[0.075] bg-black/20 px-3.5 py-2.5 text-base leading-6 text-white/80 outline-none transition placeholder:text-white/18 focus:border-violet-400/30 focus:ring-2 focus:ring-violet-500/10 sm:text-sm"
                 />
                 <div className="mt-2 flex items-start gap-1.5 text-[10px] leading-4 text-white/25">
                   <Info className="mt-0.5 size-3 shrink-0" /> 原文与音频越匹配，声音还原通常越稳定。
@@ -539,8 +601,28 @@ function App() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-[22px] border border-white/[0.075] bg-white/[0.025] shadow-[0_22px_70px_rgba(0,0,0,0.24)]">
-            <div className="flex items-center justify-between border-b border-white/[0.055] px-5 py-4 sm:px-6">
+          {generatedRecords.length > 0 && (
+            <section className="overflow-hidden rounded-[18px] border border-white/[0.075] bg-white/[0.025] shadow-[0_22px_70px_rgba(0,0,0,0.24)] sm:rounded-[22px]">
+              <div className="flex items-center justify-between border-b border-white/[0.055] px-5 py-4 sm:px-6">
+                <div>
+                  <h2 className="text-sm font-medium text-white/90">生成记录</h2>
+                  <p className="mt-0.5 text-[11px] text-white/30">当前页面已生成 {generatedRecords.length} 条，刷新后自动清空</p>
+                </div>
+                <span className="rounded-full border border-white/[0.06] bg-white/[0.035] px-2.5 py-1 text-[10px] text-white/35">
+                  本次会话
+                </span>
+              </div>
+              <div className="grid max-h-[320px] gap-2 overflow-y-auto overscroll-contain p-3 sm:max-h-[420px] sm:p-5">
+                {generatedRecords.map((record, index) => (
+                  <GeneratedRecordCard key={record.id} record={record} index={generatedRecords.length - index - 1} />
+                ))}
+              </div>
+            </section>
+          )}
+          </div>
+
+          <section className="overflow-clip rounded-[18px] border border-white/[0.075] bg-white/[0.025] shadow-[0_22px_70px_rgba(0,0,0,0.24)] sm:rounded-[22px]">
+            <div className="sticky top-14 z-20 flex items-center justify-between border-b border-white/[0.055] bg-[#0d0f14]/95 px-4 py-3 backdrop-blur-xl sm:top-16 sm:px-6 sm:py-4 xl:static xl:bg-transparent">
               <div className="flex items-center gap-3">
                 <StepBadge number={2} done={script.trim().length > 0} />
                 <div>
@@ -558,35 +640,24 @@ function App() {
                 </button>
                 <Button
                   type="button"
-                  disabled={generationState !== "completed" && (!canGenerate || generationState !== "idle")}
-                  onClick={generationState === "completed" ? toggleResult : generate}
-                  className="h-9 rounded-lg bg-violet-500 px-3.5 text-xs text-white shadow-[0_8px_24px_rgba(124,92,255,0.22)] hover:bg-violet-400 disabled:bg-white/[0.06] disabled:text-white/25 disabled:shadow-none sm:px-4"
+                  disabled={!canGenerate || generationState !== "idle"}
+                  onClick={generate}
+                  className="h-10 rounded-lg bg-violet-500 px-3.5 text-xs text-white shadow-[0_8px_24px_rgba(124,92,255,0.22)] active:scale-[0.98] hover:bg-violet-400 disabled:bg-white/[0.06] disabled:text-white/25 disabled:shadow-none sm:h-9 sm:px-4"
                 >
                   {generationState === "idle" && <><Sparkles className="size-3.5" />生成语音</>}
                   {(generationState === "queued" || generationState === "generating") && <><AudioLines className="generation-pulse size-3.5" />生成中…</>}
-                  {generationState === "completed" && (resultPlaying
-                    ? <><Pause className="size-3.5 fill-current" />暂停</>
-                    : <><Play className="size-3.5 fill-current" />试听</>)}
                 </Button>
-                <audio
-                  ref={resultAudioRef}
-                  src={resultUrl}
-                  onPlay={() => setResultPlaying(true)}
-                  onPause={() => setResultPlaying(false)}
-                  onEnded={() => setResultPlaying(false)}
-                  className="hidden"
-                />
               </div>
             </div>
 
-            <div className="p-5 sm:p-6">
+            <div className="p-3.5 sm:p-6">
               <div className="relative overflow-hidden rounded-2xl border border-white/[0.075] bg-black/20 transition focus-within:border-violet-400/30 focus-within:ring-2 focus-within:ring-violet-500/10">
                 <textarea
                   ref={textareaRef}
                   value={script}
                   onChange={(event) => setScript(event.target.value)}
                   placeholder="输入你想生成的内容，然后插入情绪标签…"
-                  className="min-h-[210px] w-full resize-none bg-transparent px-4 py-4 text-[15px] leading-8 text-white/82 outline-none placeholder:text-white/18 sm:min-h-[238px] sm:px-5 sm:py-5"
+                  className="min-h-[180px] w-full resize-none bg-transparent px-3.5 py-3.5 text-base leading-7 text-white/82 outline-none placeholder:text-white/18 sm:min-h-[238px] sm:px-5 sm:py-5 sm:text-[15px] sm:leading-8"
                   maxLength={1000}
                 />
                 <div className="flex items-center justify-between border-t border-white/[0.045] px-4 py-2.5 text-[10px] text-white/22 sm:px-5">
@@ -607,7 +678,7 @@ function App() {
                       type="button"
                       onClick={() => setActiveGroup(group)}
                       className={cn(
-                        "min-w-[58px] flex-1 rounded-lg px-3 py-2 text-[11px] font-medium transition",
+                        "min-h-10 min-w-[62px] flex-1 rounded-lg px-3 py-2 text-xs font-medium transition sm:min-h-0 sm:min-w-[58px] sm:text-[11px]",
                         activeGroup === group
                           ? "bg-white/[0.085] text-white shadow-sm"
                           : "text-white/30 hover:text-white/55"
@@ -625,7 +696,7 @@ function App() {
                       onClick={() => insertTag(tag.label)}
                       title={`插入 [${tag.label}]`}
                       className={cn(
-                        "rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition hover:-translate-y-0.5 hover:brightness-125",
+                        "min-h-10 rounded-lg border px-3 py-2 text-xs font-medium transition active:scale-95 hover:brightness-125 sm:min-h-0 sm:px-2.5 sm:py-1.5 sm:text-[11px] sm:hover:-translate-y-0.5",
                         tag.tone
                       )}
                     >
@@ -647,7 +718,7 @@ function App() {
                         }
                       }}
                       placeholder="自定义：像发现秘密一样小声而兴奋地说"
-                      className="h-9 min-w-0 flex-1 bg-transparent text-xs text-white/75 outline-none placeholder:text-white/20"
+                      className="h-11 min-w-0 flex-1 bg-transparent text-base text-white/75 outline-none placeholder:text-white/20 sm:h-9 sm:text-xs"
                     />
                   </div>
                   <Button
@@ -693,6 +764,43 @@ function App() {
                           {item}
                         </button>
                       ))}
+                    </div>
+                    <div className="mt-4 border-t border-white/[0.05] pt-4">
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-white/25">随机种子 Seed</p>
+                          <p className="mt-1 text-[10px] text-white/20">相同参数和 Seed 会尽量生成一致的结果</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={2147483647}
+                          step={1}
+                          value={seed}
+                          onChange={(event) => {
+                            const value = Number(event.target.value)
+                            if (Number.isFinite(value)) {
+                              setSeed(Math.min(2147483647, Math.max(0, Math.trunc(value))))
+                            }
+                          }}
+                          className="h-11 min-w-0 flex-1 rounded-lg border border-white/[0.07] bg-black/20 px-3 text-base text-white/70 outline-none transition focus:border-violet-400/30 focus:ring-2 focus:ring-violet-500/10 sm:h-9 sm:text-xs"
+                          aria-label="随机种子"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const value = new Uint32Array(1)
+                            crypto.getRandomValues(value)
+                            setSeed(value[0] % 2147483647)
+                          }}
+                          className="h-11 shrink-0 border-white/[0.08] bg-white/[0.035] text-white/55 hover:bg-white/[0.07] hover:text-white sm:h-9"
+                        >
+                          <Dices className="size-4" /> 换一个
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}

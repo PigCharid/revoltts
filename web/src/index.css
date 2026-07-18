@@ -79,20 +79,38 @@
 
   html {
     font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
     @apply min-h-svh bg-background text-foreground antialiased;
     margin: 0;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
   }
 
   button,
   [role="button"] {
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   button:disabled {
     cursor: not-allowed;
+  }
+}
+
+@media (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  * {
+    -webkit-overflow-scrolling: touch;
   }
 }
 

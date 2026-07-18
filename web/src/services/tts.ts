@@ -6,6 +6,7 @@ export type GenerationRequest = {
   referenceText: string
   script: string
   mode: "稳定" | "平衡" | "灵活"
+  seed: number
 }
 
 export type GenerationResult = {
@@ -20,7 +21,8 @@ const modeParameters = {
 } as const
 
 const ttsApiBaseUrl = (
-  import.meta.env.VITE_TTS_API_BASE_URL || "http://workspace.featurize.cn:18438"
+  import.meta.env.VITE_TTS_API_BASE_URL ||
+  (import.meta.env.DEV ? "http://workspace.featurize.cn:18438" : "/api")
 ).replace(/\/+$/, "")
 
 function getResponseFilename(response: Response) {
@@ -54,6 +56,7 @@ export async function generateSpeech(
   formData.append("max_new_tokens", "1024")
   formData.append("top_p", parameters.topP)
   formData.append("temperature", parameters.temperature)
+  formData.append("seed", String(request.seed))
   formData.append("use_memory_cache", "on")
   formData.append("filename", "revoltts-preview")
 
